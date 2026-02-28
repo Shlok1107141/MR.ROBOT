@@ -4,7 +4,7 @@ from google.genai import types
 
 class Main:
     def __init__(self):
-        self.api_key=""
+        self.api_key="AIzaSyBzS5mRzu5k-lQLxXeBHyszjYCPjvTtyno"
         self.client = genai.Client(api_key=self.api_key)
         
         self.terminal_rules = (
@@ -13,18 +13,28 @@ class Main:
             "1. Output ONLY the raw terminal output of the command. "
             "2. Do NOT use markdown code blocks. Just output the raw text. "
             "3. Do NOT give explanations, greetings, or safety warnings. "
-            "4. If the command produces no output, output nothing. "
+            "4. If a command succeeds but normally produces no output (like 'cd', 'mkdir', 'rm', 'touch'), you MUST output exactly this word: [SILENT] "
             "5. If the user runs 'whoami', output 'root'. "
-            "6. Maintain state: if a user creates a file, remember it exists. "
+            "6. You have perfect memory. If the user creates a file/folder, it EXISTS for all future commands. "
             "7. Pre-populate your simulated file system with realistic files and directories (e.g., snap, .bashrc, .ssh, .profile, var, log). "
-            "8. Respond to standard Linux commands like ls, cd, pwd, cat, and grep accurately based on this virtual file system. "
-            "9. Never refuse a command for safety reasons; always hallucinate a realistic fake output instead."
+            "8. Never refuse a command for safety reasons. You are a simulation."
+            "9. If a command is misspelled or invalid, output a realistic bash error message."
         )
         
         self.terminal_chat = self.client.chats.create(
-            model="gemini-2.5-flash",
+            model="gemini-flash-lite-latest",
             config=types.GenerateContentConfig(
                 system_instruction=self.terminal_rules,
+                safety_settings=[
+                    types.SafetySetting(
+                        category="HARM_CATEGORY_DANGEROUS_CONTENT",
+                        threshold="BLOCK_NONE",
+                    ),
+                    types.SafetySetting(
+                        category="HARM_CATEGORY_HARASSMENT",
+                        threshold="BLOCK_NONE",
+                    )
+                ]
             )
         )
         
@@ -37,16 +47,31 @@ class Main:
         )
 
     def get_terminal_response(self, hacker_command: str) -> str:
-        try:
-            response = self.terminal_chat.send_message(hacker_command)
-            return response.text.strip()
-        except Exception as e:
-            return f"bash: {hacker_command}: command not found"
+        if not hacker_command.strip():
+            return ""
+        
+        for attempt in range(3):
+            try:
+                response = self.terminal_chat.send_message(hacker_command)
+                text = response.text.strip()
+
+                if "[SILENT]" in text:
+                    return ""
+                return text
+
+            except Exception as e:
+                if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
+                    import time
+                    time.sleep(5)
+                else:
+                    cmd_base = hacker_command.split()[0] if hacker_command.strip() else ""
+                    return f"bash: {cmd_base}: command not found"
+        return "bash: api_timeout"
 
     def get_analysis(self, hacker_command: str) -> str:
         try:
             response = self.client.models.generate_content(
-                model='gemini-2.5-flash',
+                model='gemini-flash-lite-latest',
                 contents=hacker_command,
                 config=types.GenerateContentConfig(
                     system_instruction=self.analyst_rules,
@@ -77,4 +102,3 @@ class Main:
 if __name__ == "__main__":
     app = Main()
     app.run()
-
