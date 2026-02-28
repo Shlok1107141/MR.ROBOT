@@ -10,7 +10,7 @@ ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
 
 #Ai setup
-GOOGLE_API_KEY = "AIzaSyCust4_MkB6Bvk2v5HmFxI2_4HqjBjDGvo"
+GOOGLE_API_KEY = "API-key"
 genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-2.5-flash')
 
@@ -106,4 +106,5 @@ def start():
 
 print("[STARTING] server is starting...")
 start()
+
 
