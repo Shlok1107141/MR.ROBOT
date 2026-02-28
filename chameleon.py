@@ -4,7 +4,7 @@ from google.genai import types
 
 class Main:
     def __init__(self):
-        self.api_key="AIzaSyBzS5mRzu5k-lQLxXeBHyszjYCPjvTtyno"
+        self.api_key=""
         self.client = genai.Client(api_key=self.api_key)
         
         self.terminal_rules = (
@@ -102,3 +102,4 @@ class Main:
 if __name__ == "__main__":
     app = Main()
     app.run()
+
