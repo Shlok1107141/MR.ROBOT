@@ -4,8 +4,8 @@ from google.genai import types
 
 class Main:
     def __init__(self):
-        self.api_key=""
-        self.client = genai.Client(api_key=self.api_key)
+        def __init__(self):
+        self.client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
         
         self.terminal_rules = (
             "You are a high-interaction honeypot simulating an Ubuntu 22.04 Linux server terminal. "
@@ -102,4 +102,5 @@ class Main:
 if __name__ == "__main__":
     app = Main()
     app.run()
+
 
