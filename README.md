@@ -20,3 +20,17 @@ While the attacker is trapped in this infinite, realistic loop, a secondary AI "
 
 ## Authors
 * Shlok & Sidh
+
+graph TD
+    A([Attacker]) -->|SSH Port 22| B{Paramiko Listener}
+    
+    %% The Terminal Loop
+    B -->|Command Input| C[Terminal AI Engine]
+    C -->|Fake Ubuntu Output| A
+    
+    %% The Analyst Branch
+    B -->|Background Logging| D[Analyst AI Engine]
+    D -->|Intent Verdict| E[(Glass Box Dashboard)]
+    
+    classDef hacker fill:#ff4d4d,stroke:#333,stroke-width:2px,color:#fff;
+    class A hacker;
