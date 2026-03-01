@@ -1,41 +1,27 @@
 import socket 
 import threading
-import google.generativeai as genai
 import csv
 from datetime import datetime
+from chameleon import Main
+import re 
 
 PORT = 5050
-SERVER = "0.0.0.0"  #get ip address
+SERVER = "0.0.0.0"  
 ADDR = (SERVER, PORT)
 FORMAT = 'utf-8'
 
-#Ai setup
-GOOGLE_API_KEY = "API-key"
-genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash')
-
-# The personality of your server
-SYSTEM_PROMPT = """
-You are a fake Ubuntu Linux server.
-The user is a hacker. You must output EXACTLY what the terminal would output.
-
-CRITICAL RULES:
-1. Do NOT use Markdown formatting. NO backticks (`). NO code blocks.
-2. Do NOT add headers or explanations.
-3. If a command (like 'cd' or 'mkdir') succeeds, output NOTHING (empty string).
-4. If a command fails, output a standard Linux error message.
-5. Maintain a realistic file system.
-"""
-
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind(ADDR) 
-
-def get_ai_response(command):
-    try:
-        response = model.generate_content(f"{SYSTEM_PROMPT}\n The hacker typed: {command}")
-        return response.text
-    except Exception as e:
-        return f"\nError generating response: {e}\n"
+def clean_terminal_input(text):
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    text = ansi_escape.sub('', text)
+    
+    result = []
+    for char in text:
+        if char in ('\x08', '\x7f'):  # If it's a Backspace or Delete
+            if result:
+                result.pop() # Actually delete the previous character
+        else:
+            result.append(char)
+    return "".join(result)
 
 def log_attack(ip, command, response_type): 
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -44,9 +30,13 @@ def log_attack(ip, command, response_type):
         writer = csv.writer(f)
         writer.writerow([timestamp, ip, command, response_type])
 
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server.bind(ADDR) 
 
 def handle_client(conn, addr):
     print(f"[NEW CONNECTION] {addr} connected.")
+
+    ai_engine = Main()
 
     # 1. Send a Fake Welcome Message (looks like Linux)
     welcome_msg = "Welcome to Ubuntu 20.04.3 LTS (GNU/Linux 5.4.0-91-generic x86_64)\r\nadmin@server:~$ "
@@ -76,14 +66,23 @@ def handle_client(conn, addr):
                     cmd, rest = buffer.split("\r", 1)
 
                 buffer = rest
-                cmd = cmd.strip()
+                cmd = clean_terminal_input(cmd).strip()
                 print(f"[{addr}] COMMAND: {cmd}")
-                log_attack(addr[0], cmd, "AI_Generated")
 
                 #Ask ai for output
                 if cmd:
-                    output = get_ai_response(cmd)
-                    response = f"\r\n{output}\r\nadmin@server:~$ "
+                    fake_output = ai_engine.get_terminal_response(cmd)
+                    explaination = ai_engine.get_analysis(cmd)
+
+                    log_attack(addr[0], cmd, explaination)
+                    print(f"   -> Analyst: {explaination}")
+
+                    if fake_output:
+                        fake_output = fake_output.replace('\n', '\r\n')
+                        response = f"\r\n{fake_output}\r\nroot@ubuntu:~# "
+
+                    else:
+                        response = f"\r\nroot@ubuntu:~# "
                     conn.send(response.encode(FORMAT))
                 else:
                     conn.send("\r\nadmin@server:~$ ".encode(FORMAT))
@@ -106,5 +105,4 @@ def start():
 
 print("[STARTING] server is starting...")
 start()
-
 

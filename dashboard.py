@@ -19,7 +19,6 @@ while True:
     df = load_data()
     
     with placeholder.container():
-        # KPI Metrics at the top
         kpi1, kpi2, kpi3 = st.columns(3)
         
         # Metric 1: Total Attacks
@@ -36,7 +35,6 @@ while True:
         # The Data Table
         st.subheader("🔴 Live Attack Log")
         
-        # Show dangerous commands in RED
         if not df.empty:
             # We sort by newest first
             df = df.sort_index(ascending=False)
